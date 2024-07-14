@@ -1,92 +1,67 @@
-from kivy.app import App
-from kivy.core.window import Window
-from kivy.uix.button import Button
-from kivy.uix.label import Label
-from kivy.uix.textinput import TextInput
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.screenmanager import Screen, ScreenManager
-Window.size = (1000, 500)
-name = ''
-age = 7
-p1, p2, p3 = 0, 0, 0
-class MainScreen(Screen):
-    def __init__(self, name = 'main'):
-        super().__init__(name = name)
-        vl = BoxLayout(orientation = 'vertical', padding = 8, spacing = 8)
-        hl1 = BoxLayout()
-        hl2 = BoxLayout(size_hint = (0.8, None), height = '30sp')
-        hl3 = BoxLayout(size_hint = (0.0, None), height = '30sp')
-        self.main_label = Label(text = 'main label')
-        self.name_label = Label(text = 'name label')
-        self.age_label = Label(text = 'age label')
-        self.name_input = TextInput(multiline = False)
-        self.age_input = TextInput(text = '7', multiline = False)
-        self.btn = Button(text = 'Почати', size_hint = (0.3, 0.2), pos_hint = {'center_x':0.5, 'center_y':0.5})
-        hl1.add_widget(self.main_label)
-        hl2.add_widget(self.name_label)
-        hl2.add_widget(self.name_input)
-        hl3.add_widget(self.age_label)
-        hl3.add_widget(self.age_input)
-        vl.add_widget(hl1)
-        vl.add_widget(hl2)
-        vl.add_widget(hl3)
-        vl.add_widget(self.btn)
-        self.add_widget(vl)
-        self.btn.on_press = self.next
-    def next(self):
-        global name
-        global age
-        name = self.name_input.text
-        try:
-            age = int(self.age_input.text)
-            self.manager.current = 'pulse1'
-        except:
-            self.main_label.text = 'Потрібно ввести число у вік'
-class Pulse1(Screen):
-    def __init__(self, **kw):
-        super().__init__(**kw)
-
-        self.instruction_label = Label(text = 'instruction label')
-        self.result_label = Label(text = 'result label')
-        self.result_input = TextInput(text = '', multiline = False)
-        self.btn = Button(text = 'Продовжити', size_hint = (0.3, 0.2), pos_hint = {'center_x':0.5, 'center_y':0.5})
-        vl = BoxLayout(orientation = 'vertical', padding = 8, spacing = 8)
-        hl1 = BoxLayout()
-        hl2 = BoxLayout(size_hint = (0.8, None), height = '30sp')
-        hl1.add_widget(self.instruction_label)
-        hl2.add_widget(self.result_label)
-        hl2.add_widget(self.result_input)
-        vl.add_widget(hl1)
-        vl.add_widget(hl2)
-        vl.add_widget(self.btn)
-        self.add_widget(vl)
-        self.btn.on_press = self.next
-    def next(self):
-        global pl
-        pl = int(self.result_input.text)
-        self.manager.current = 'sits'
-class Pusle2 (Screen):
-    def __init__(self, **kw):
-        super().__init__(**kw)
-        self.task_label = Label(text = 'task label')
-        self.btn = Button(text = 'Продовжити', size_hint = (0.3, 0.2), pos_hint = {'center_x':0.5, 'center_y':0.5})
-        vl = BoxLayout(orientation = 'vertical', padding = 8, spacing = 8)
-        vl.add_widget(self.task_label)
-        vl.add_widget(self.btn)
-        self.add_widget(vl)
-        self.btn.on_press = self.next
-    def next(self):
-        self.manager.current = 'pulse2'
-
-
+""" Модуль для розрахунку результатів проби Руф’є.
+ 
+Сума вимірювань пульсу у трьох спробах (до навантаження, одразу після та після короткого відпочинку)
+в ідеалі має бути не більше 200 ударів на хвилину.
+Ми пропонуємо дітям вимірювати свій пульс протягом 15 секунд,
+і наводимо результат до ударів за хвилину множенням на 4:
+    S = 4* (P1 + P2 + P3)
+Що далі цей результат від ідеальних 200 ударів, то гірше.
+Традиційно таблиці даються для величини, поділеної на 10.
+ 
+Індекс Руф’є  
+   IR = (S - 200) / 10
+оцінюється за таблицею відповідно до віку:
+           7-8             9-10             11-12          13-14                15+ 
+                                                                      (тільки для підлітків!)
+чуд.    6.4 і менше    4.9 і менше       3.4 і менше    1.9 і менше          0.4 і менше
+доб.    6.5 - 11.9     5 - 10.4          3.5 - 8.9      2 - 7.4              0.5 - 5.9
+задов.  12 - 16.9      10.5 - 15.4       9 - 13.9       7.5 - 12.4           6 - 10.9
+слабкий 17 - 20.9      15.5 - 19.4       14 - 17.9      12.5 - 16.4          11 - 14.9
+незад.  21 і більше    19.5 і більше     18 і більше    16.5 і більше        15 і більше
+ 
+для будь-якого віку результат "незадовільно" віддалений від "слабкого" на 4,
+той від "задовільного" на 5, а "добрий" від "чуд" - на 5.5
+ 
+тому напишемо функцію ruffier_result(r_index, level), яка отримуватиме
+розрахований індекс Руф'є та рівень "незадовільно" для віку тестованого, і віддавати результат """
+# тут задаються рядки, за допомогою яких викладено результат:
+txt_index = "Ваш індекс Руф’є:"
+txt_workheart = "Працездатність серця:"
+txt_nodata = """ Немає даних для такого віку """
+txt_res = []
+txt_res.append(""" Низька. Терміново зверніться до лікаря! """)
+txt_res.append(""" Задовільна. Зверніться до лікаря! """)
+txt_res.append(""" Середня. Можливо, варто додатково обстежитись у лікаря. """)
+txt_res.append(""" Вище середнього """)
+txt_res.append(""" Висока """)
+def ruffier_index(p1, p2, p3):
+    return(4 * (p1 + p2 + p3) - 200) / 10
+def neud_level(age):
+    norm_age = (min(age, 15) - 7) // 2  
+    result = 21 - norm_age * 1.5 
+    return result 
     
+def ruffier_result(r_index, level):
 
-class MyApp(App):
-    def build(self):
-        sm = ScreenManager()
-        sm.add_widget(MainScreen(name = 'main'))
-        sm.add_widget(Pulse1(name = 'pulse1'))
-        sm.add_widget(Pusle2(name = 'pulse2'))
-        return sm
-app = MyApp()
-app.run()
+    if r_index >= level:
+        return 0
+    level = level - 4 # это не будет выполняться, если мы уже вернули ответ "неуд"
+    if r_index >= level:
+        return 1
+    level = level - 5 # аналогично, попадаем сюда, если уровень как минимум "уд"
+    if r_index >= level:
+        return 2
+    level = level - 5.5 # следующий уровень
+    if r_index >= level:
+        return 3
+    return 4 # здесь оказались, если индекс меньше всех промежуточных уровней, т.е. тестируемый крут.
+
+def test(P1, P2, P3, age):
+
+    if age < 7:
+        return (txt_index + "0", txt_nodata)
+    else:
+        ruff_index = ruffier_index(P1, P2, P3) 
+        result = txt_res[ruffier_result(ruff_index, neud_level(age))] 
+        res = txt_index + str(ruff_index) + '\n' + txt_workheart + result
+        return res
